@@ -102,7 +102,7 @@ export default function Home() {
               aria-label={tab.name}
             >
               <tab.icon />
-              <span className="sr-only">{tab.name}</span>
+              <span className="mt-1 text-[11px] font-medium">{tab.name}</span>
             </button>
           ))}
         </div>
