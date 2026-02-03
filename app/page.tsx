@@ -39,8 +39,8 @@ export default function Home() {
                 <Image src="/logo.png" alt="Elegant Steel East Africa" width={40} height={40} />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Kelly OS</h1>
-                <p className="text-sm text-gray-600 dark:text-gray-400">M-Pesa PayBill Payments Engine</p>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Elegant Steel HW</h1>
+                <p className="text-sm text-gray-600 dark:text-gray-400">M-Pesa PayBill Payments Engine • System Owner: Kelly OS</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
@@ -109,21 +109,6 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* Footer */}
-      <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
-            <p>© 2026 Kelly OS - M-Pesa PayBill Payments Engine</p>
-            <div className="flex items-center space-x-4">
-              <span>Environment: <strong className="text-gray-900 dark:text-white">Sandbox</strong></span>
-              <span>•</span>
-              <span>Double-Entry Accounting</span>
-              <span>•</span>
-              <span>Real-Time Processing</span>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

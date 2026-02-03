@@ -14,3 +14,4 @@ build/
 *.tmp
 .cache/
 coverage/
+.vercel

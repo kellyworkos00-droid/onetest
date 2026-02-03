@@ -153,9 +153,55 @@ model POSItem {
   createdAt   DateTime @default(now()) @map("created_at")
   
   sale        POSSale  @relation(fields: [posId], references: [id], onDelete: Cascade)
+  product     Product? @relation(fields: [productId], references: [id])
   
   @@map("pos_items")
   @@index([posId])
+  @@index([productId])
+}
+
+// ============================================================================
+// PRODUCT CATALOG
+// ============================================================================
+
+enum ProductCategory {
+  GENERAL
+  FOOD_BEVERAGE
+  ELECTRONICS
+  CLOTHING
+  SERVICES
+  OTHER
+}
+
+model Product {
+  id          String          @id @default(cuid())
+  productId   String          @unique @map("product_id") // Human-readable: PROD-001
+  name        String
+  description String?
+  
+  // Pricing
+  price       Decimal         @db.Decimal(15, 2)
+  cost        Decimal?        @db.Decimal(15, 2) // Purchase cost (for profit tracking)
+  
+  // Inventory
+  sku         String?         @unique // Stock keeping unit
+  category    ProductCategory @default(GENERAL)
+  inStock     Boolean         @default(true) @map("in_stock")
+  stockQty    Decimal?        @default(0) @db.Decimal(10, 2) @map("stock_qty")
+  
+  // Status
+  isActive    Boolean         @default(true) @map("is_active")
+  
+  // Audit
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+  
+  // Relations
+  posItems    POSItem[]
+  
+  @@map("products")
+  @@index([category])
+  @@index([isActive])
 }
 
 // ============================================================================
