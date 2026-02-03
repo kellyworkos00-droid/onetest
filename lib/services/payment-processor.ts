@@ -126,6 +126,7 @@ export async function processPayment(params: ProcessPaymentParams): Promise<Paym
       invoiceIds: allocation.map((a) => a.invoiceId),
       transactionDate,
       description: `M-Pesa ${mpesaReceiptNumber}`,
+      tx,
     });
 
     // 4e: Update payment status to COMPLETED

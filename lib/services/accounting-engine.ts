@@ -37,6 +37,7 @@ export interface PostTransactionParams {
   transactionRef: string;
   transactionDate: Date;
   entries: LedgerEntry[];
+  tx?: Prisma.TransactionClient;
   paymentId?: string;
   invoiceId?: string;
   customerId?: string;
@@ -83,7 +84,7 @@ export class AccountingEngine {
    * @throws Error if debits != credits
    */
   static async postTransaction(params: PostTransactionParams): Promise<void> {
-    const { transactionRef, transactionDate, entries, paymentId, invoiceId, customerId } = params;
+    const { transactionRef, transactionDate, entries, tx, paymentId, invoiceId, customerId } = params;
 
     // Step 1: Validate transaction balance
     const totalDebits = entries
@@ -102,25 +103,30 @@ export class AccountingEngine {
     }
 
     // Step 2: Create ledger entries (atomic transaction)
-    await prisma.$transaction(
-      entries.map((entry) =>
-        prisma.accountingLedger.create({
-          data: {
-            accountCode: entry.accountCode,
-            accountName: entry.accountName,
-            accountType: entry.accountType,
-            entryType: entry.entryType,
-            amount: new Prisma.Decimal(entry.amount),
-            transactionRef,
-            description: entry.description,
-            transactionDate,
-            paymentId,
-            invoiceId,
-            customerId,
-          },
-        })
-      )
+    const client = tx ?? prisma;
+    const writes = entries.map((entry) =>
+      client.accountingLedger.create({
+        data: {
+          accountCode: entry.accountCode,
+          accountName: entry.accountName,
+          accountType: entry.accountType,
+          entryType: entry.entryType,
+          amount: new Prisma.Decimal(entry.amount),
+          transactionRef,
+          description: entry.description,
+          transactionDate,
+          paymentId,
+          invoiceId,
+          customerId,
+        },
+      })
     );
+
+    if (tx) {
+      await Promise.all(writes);
+    } else {
+      await prisma.$transaction(writes);
+    }
 
     console.log('📒 Posted to ledger:', {
       transactionRef,
@@ -150,8 +156,9 @@ export class AccountingEngine {
     invoiceIds?: string[];
     transactionDate: Date;
     description: string;
+    tx?: Prisma.TransactionClient;
   }): Promise<void> {
-    const { transactionRef, amount, customerId, paymentId, invoiceIds, transactionDate, description } = params;
+    const { transactionRef, amount, customerId, paymentId, invoiceIds, transactionDate, description, tx } = params;
 
     const entries: LedgerEntry[] = [
       {
@@ -176,6 +183,7 @@ export class AccountingEngine {
       transactionRef,
       transactionDate,
       entries,
+      tx,
       paymentId,
       customerId,
       invoiceId: invoiceIds?.[0], // Link to primary invoice if available
@@ -196,8 +204,9 @@ export class AccountingEngine {
     invoiceId: string;
     transactionDate: Date;
     description: string;
+    tx?: Prisma.TransactionClient;
   }): Promise<void> {
-    const { transactionRef, amount, customerId, invoiceId, transactionDate, description } = params;
+    const { transactionRef, amount, customerId, invoiceId, transactionDate, description, tx } = params;
 
     const entries: LedgerEntry[] = [
       {
@@ -222,6 +231,7 @@ export class AccountingEngine {
       transactionRef,
       transactionDate,
       entries,
+      tx,
       invoiceId,
       customerId,
     });
