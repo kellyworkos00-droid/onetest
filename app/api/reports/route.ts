@@ -96,11 +96,11 @@ export async function GET(req: NextRequest) {
       });
 
       const pendingPayments = unpaidInvoices.reduce((sum, inv) => 
-        sum + (inv.amount - inv.amountPaid), 0
+        sum + (Number(inv.amount) - Number(inv.amountPaid)), 0
       );
 
       const todayRevenue = todayPayments.reduce((sum, payment) => 
-        sum + payment.amount, 0
+        sum + Number(payment.amount), 0
       );
 
       return NextResponse.json({
