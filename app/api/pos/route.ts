@@ -65,17 +65,22 @@ export async function GET(req: NextRequest) {
     const prisma = (await import('@/lib/prisma')).default;
     const sales = await prisma.pOSSale.findMany({
       orderBy: { createdAt: 'desc' },
-      include: {
-        customer: {
-          select: {
-            name: true,
-            customerId: true
-          }
-        }
-      },
       take: 100
     });
-    return NextResponse.json(sales);
+    
+    // Enrich with customer data
+    const enrichedSales = await Promise.all(sales.map(async (sale) => {
+      if (sale.customerId) {
+        const customer = await prisma.customer.findUnique({
+          where: { id: sale.customerId },
+          select: { name: true, customerId: true }
+        });
+        return { ...sale, customer };
+      }
+      return { ...sale, customer: null };
+    }));
+    
+    return NextResponse.json(enrichedSales);
   } catch (error: any) {
     console.error('❌ Error fetching POS sales:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -96,19 +101,25 @@ export async function POST(req: NextRequest) {
       const prisma = (await import('@/lib/prisma')).default;
       const sale = await prisma.pOSSale.create({
         data: {
-          saleId: `POS-${Date.now()}`,
+          posId: `POS-${Date.now()}`,
           customerId: data.customerId,
           amount: data.amount,
           status: 'PENDING',
-          description: data.description,
           cashierId: data.cashierId,
           branchId: data.branchId,
         },
-        include: {
-          customer: true
-        }
       });
-      return NextResponse.json(sale, { status: 201 });
+      
+      // Enrich with customer data
+      let customer = null;
+      if (sale.customerId) {
+        customer = await prisma.customer.findUnique({
+          where: { id: sale.customerId },
+          select: { name: true, customerId: true }
+        });
+      }
+      
+      return NextResponse.json({ ...sale, customer }, { status: 201 });
     }
 
     // Original item-based sale
