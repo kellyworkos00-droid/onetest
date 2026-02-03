@@ -1,6 +1,4 @@
-'use client';
-
-import { useEffect, useState } from 'react';
+'use client';\r\n\r\nimport { useEffect, useState } from 'react';\r\nimport { TrendingUpIcon, CheckIcon } from './Icons';
 
 interface DashboardStats {
   totalCustomers: number;
@@ -152,3 +150,4 @@ export default function Dashboard() {
     </div>
   );
 }
+

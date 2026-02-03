@@ -6,11 +6,18 @@ import CustomerManager from './components/CustomerManager';
 import InvoiceManager from './components/InvoiceManager';
 import POSManager from './components/POSManager';
 import PaymentMonitor from './components/PaymentMonitor';
-
-type Tab = 'dashboard' | 'customers' | 'invoices' | 'pos' | 'payments';
-
-export default function Home() {
-  const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+import {
+  DashboardIcon,
+  PaymentIcon,
+  CustomersIcon,
+  InvoicesIcon,
+  POSIcon,
+} from './components/Icons';
+DashboardIcon },
+    { id: 'payments' as Tab, name: 'Live Payments', icon: PaymentIcon },
+    { id: 'customers' as Tab, name: 'Customers', icon: CustomersIcon },
+    { id: 'invoices' as Tab, name: 'Invoices', icon: InvoicesIcon },
+    { id: 'pos' as Tab, name: 'POS Sales', icon: POSIconshboard');
 
   const tabs = [
     { id: 'dashboard' as Tab, name: 'Dashboard', icon: '📊' },
@@ -63,7 +70,7 @@ export default function Home() {
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
                 }`}
               >
-                <span className="text-lg">{tab.icon}</span>
+                <tab.icon />
                 <span>{tab.name}</span>
               </button>
             ))}

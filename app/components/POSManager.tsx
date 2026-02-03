@@ -1,15 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { InfoIcon } from './Icons';
 
 interface POSSale {
   id: string;
-  saleId: string;
+  posId: string;
   customerId: string;
   customer: {
     name: string;
     customerId: string;
-  };
+  } | null;
   amount: number;
   status: string;
   description?: string;
@@ -171,10 +172,13 @@ export default function POSManager() {
                 placeholder="Item/service description"
               />
             </div>
-            <div className="bg-purple-50 dark:bg-purple-900 border border-purple-200 dark:border-purple-700 rounded-lg p-4">
-              <p className="text-sm text-purple-800 dark:text-purple-200">
-                💡 <strong>Quick Sale:</strong> Sale will be marked as PENDING. Customer pays via M-Pesa PayBill using their Customer ID as the account number. Payment is automatically matched and sale status updates to PAID.
-              </p>
+            <div className="bg-purple-50 dark:bg-purple-900 border border-purple-200 dark:border-purple-700 rounded-lg p-4 flex gap-3">
+              <InfoIcon />
+              <div>
+                <p className="text-sm text-purple-800 dark:text-purple-200">
+                  <strong>Quick Sale:</strong> Sale will be marked as PENDING. Customer pays via M-Pesa PayBill using their Customer ID as the account number. Payment is automatically matched and sale status updates to PAID.
+                </p>
+              </div>
             </div>
             <button
               type="submit"
@@ -225,16 +229,16 @@ export default function POSManager() {
                   <tr key={sale.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="font-mono text-sm font-medium text-gray-900 dark:text-white">
-                        {sale.saleId}
+                        {sale.posId}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
                         <div className="text-sm font-medium text-gray-900 dark:text-white">
-                          {sale.customer.name}
+                          {sale.customer?.name || 'Walk-in'}
                         </div>
                         <div className="text-sm text-gray-500 dark:text-gray-400">
-                          {sale.customer.customerId}
+                          {sale.customer?.customerId || '-'}
                         </div>
                       </div>
                     </td>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { ClockIcon } from './Icons';
 
 interface Payment {
   id: string;
@@ -66,7 +67,7 @@ export default function PaymentMonitor() {
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Real-Time Payment Monitor</h2>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Live M-Pesa payment tracking • Auto-refreshes every 5 seconds
+            Live M-Pesa payment tracking - Auto-refreshes every 5 seconds
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -85,9 +86,7 @@ export default function PaymentMonitor() {
         ) : payments.length === 0 ? (
           <div className="text-center py-12">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 mb-4">
-              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+              <ClockIcon />
             </div>
             <p className="text-gray-500 dark:text-gray-400">Waiting for payments...</p>
             <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
@@ -169,7 +168,7 @@ export default function PaymentMonitor() {
         <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-2">How to Make a Payment</h3>
         <ol className="text-sm text-blue-800 dark:text-blue-300 space-y-1 ml-4 list-decimal">
           <li>Go to M-Pesa menu on your phone</li>
-          <li>Select "Lipa na M-Pesa" → "Pay Bill"</li>
+          <li>Select "Lipa na M-Pesa" - "Pay Bill"</li>
           <li>Enter Business Number: <strong>{process.env.NEXT_PUBLIC_MPESA_SHORT_CODE || '174379'}</strong></li>
           <li>Enter Account Number: <strong>Customer ID</strong> (e.g., ACC001)</li>
           <li>Enter Amount and your M-Pesa PIN</li>
