@@ -9,6 +9,7 @@ interface Invoice {
   customer: {
     name: string;
     customerId: string;
+    balance?: number;
   };
   amount: number;
   amountPaid: number;
@@ -18,11 +19,40 @@ interface Invoice {
   createdAt: string;
 }
 
+interface InvoiceLineItem {
+  id: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
+
+interface InvoicePaymentLink {
+  id: string;
+  amountApplied: number;
+  payment: {
+    id: string;
+    mpesaReceiptNumber: string;
+    amount: number;
+    phone: string;
+    status: string;
+    createdAt: string;
+  };
+}
+
+interface InvoiceDetails extends Invoice {
+  lineItems: InvoiceLineItem[];
+  payments: InvoicePaymentLink[];
+}
+
 export default function InvoiceManager() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [invoiceDetails, setInvoiceDetails] = useState<InvoiceDetails | null>(null);
   const [formData, setFormData] = useState({
     customerId: '',
     amount: '',
@@ -81,6 +111,27 @@ export default function InvoiceManager() {
     } catch (error) {
       console.error('Error creating invoice:', error);
     }
+  };
+
+  const openInvoiceDetails = async (invoiceId: string) => {
+    setDetailsOpen(true);
+    setDetailsLoading(true);
+    try {
+      const response = await fetch(`/api/invoices?invoiceId=${encodeURIComponent(invoiceId)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setInvoiceDetails(data);
+      }
+    } catch (error) {
+      console.error('Error fetching invoice details:', error);
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
+
+  const closeInvoiceDetails = () => {
+    setDetailsOpen(false);
+    setInvoiceDetails(null);
   };
 
   const formatCurrency = (amount: number) => {
@@ -221,6 +272,9 @@ export default function InvoiceManager() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Due Date
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -264,6 +318,14 @@ export default function InvoiceManager() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
                       {new Date(invoice.dueDate).toLocaleDateString()}
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <button
+                        onClick={() => openInvoiceDetails(invoice.invoiceId)}
+                        className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium"
+                      >
+                        View
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -271,6 +333,139 @@ export default function InvoiceManager() {
           </div>
         )}
       </div>
+
+      {detailsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-3xl bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Invoice Details</h3>
+                {invoiceDetails && (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {invoiceDetails.invoiceId} • {invoiceDetails.customer?.name}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={closeInvoiceDetails}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {detailsLoading ? (
+                <div className="flex items-center justify-center h-40">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+                </div>
+              ) : invoiceDetails ? (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Amount</p>
+                      <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                        {formatCurrency(Number(invoiceDetails.amount))}
+                      </p>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Paid</p>
+                      <p className="text-lg font-semibold text-green-600 dark:text-green-400">
+                        {formatCurrency(Number(invoiceDetails.amountPaid))}
+                      </p>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Balance</p>
+                      <p className="text-lg font-semibold text-red-600 dark:text-red-400">
+                        {formatCurrency(Number(invoiceDetails.amount) - Number(invoiceDetails.amountPaid))}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Status</p>
+                      <span className={`mt-1 inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(invoiceDetails.status)}`}>
+                        {invoiceDetails.status.replace('_', ' ')}
+                      </span>
+                    </div>
+                    <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Customer Balance</p>
+                      <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                        {formatCurrency(Number(invoiceDetails.customer?.balance ?? 0))}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Line Items</h4>
+                    {invoiceDetails.lineItems?.length ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                              <th className="px-4 py-2 text-left">Description</th>
+                              <th className="px-4 py-2 text-right">Qty</th>
+                              <th className="px-4 py-2 text-right">Unit</th>
+                              <th className="px-4 py-2 text-right">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                            {invoiceDetails.lineItems.map((item) => (
+                              <tr key={item.id}>
+                                <td className="px-4 py-2">{item.description}</td>
+                                <td className="px-4 py-2 text-right">{item.quantity}</td>
+                                <td className="px-4 py-2 text-right">{formatCurrency(Number(item.unitPrice))}</td>
+                                <td className="px-4 py-2 text-right">{formatCurrency(Number(item.total))}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">No line items available.</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Receipts</h4>
+                    {invoiceDetails.payments?.length ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                              <th className="px-4 py-2 text-left">Receipt</th>
+                              <th className="px-4 py-2 text-left">Phone</th>
+                              <th className="px-4 py-2 text-right">Applied</th>
+                              <th className="px-4 py-2 text-left">Status</th>
+                              <th className="px-4 py-2 text-left">Date</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                            {invoiceDetails.payments.map((p) => (
+                              <tr key={p.id}>
+                                <td className="px-4 py-2 font-mono">{p.payment.mpesaReceiptNumber}</td>
+                                <td className="px-4 py-2">{p.payment.phone}</td>
+                                <td className="px-4 py-2 text-right">{formatCurrency(Number(p.amountApplied))}</td>
+                                <td className="px-4 py-2">{p.payment.status}</td>
+                                <td className="px-4 py-2">{new Date(p.payment.createdAt).toLocaleString()}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">No receipts yet.</p>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-gray-500 dark:text-gray-400">Unable to load invoice details.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
