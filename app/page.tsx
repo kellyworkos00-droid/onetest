@@ -13,18 +13,18 @@ import {
   InvoicesIcon,
   POSIcon,
 } from './components/Icons';
-DashboardIcon },
+ 
+type Tab = 'dashboard' | 'customers' | 'invoices' | 'pos' | 'payments';
+
+export default function Home() {
+  const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+
+  const tabs = [
+    { id: 'dashboard' as Tab, name: 'Dashboard', icon: DashboardIcon },
     { id: 'payments' as Tab, name: 'Live Payments', icon: PaymentIcon },
     { id: 'customers' as Tab, name: 'Customers', icon: CustomersIcon },
     { id: 'invoices' as Tab, name: 'Invoices', icon: InvoicesIcon },
-    { id: 'pos' as Tab, name: 'POS Sales', icon: POSIconshboard');
-
-  const tabs = [
-    { id: 'dashboard' as Tab, name: 'Dashboard', icon: '📊' },
-    { id: 'payments' as Tab, name: 'Live Payments', icon: '💳' },
-    { id: 'customers' as Tab, name: 'Customers', icon: '👥' },
-    { id: 'invoices' as Tab, name: 'Invoices', icon: '📄' },
-    { id: 'pos' as Tab, name: 'POS Sales', icon: '🛒' },
+    { id: 'pos' as Tab, name: 'POS Sales', icon: POSIcon },
   ];
 
   return (
