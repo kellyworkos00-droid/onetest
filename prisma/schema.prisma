@@ -126,6 +126,7 @@ model POSSale {
   invoiceId   String?   @unique @map("invoice_id") // Created when sale is confirmed
   
   // Metadata
+  description String?   // Item/service description
   cashierId   String?   @map("cashier_id")
   branchId    String?   @map("branch_id")
   
