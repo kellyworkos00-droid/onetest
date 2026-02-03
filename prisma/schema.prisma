@@ -1,0 +1,381 @@
+// Kelly OS — M-Pesa PayBill Payments Engine
+// Database Schema for PostgreSQL + Prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// CUSTOMER & ACCOUNT MANAGEMENT
+// ============================================================================
+
+model Customer {
+  id        String   @id @default(cuid())
+  // customer_id is used as PayBill Account Number for M-Pesa payments
+  customerId String  @unique @map("customer_id") // e.g., "CUST-001", acts as Account Number
+  name       String
+  phone      String   // Format: 254712345678
+  email      String?
+  
+  // Financial State
+  balance    Decimal  @default(0) @db.Decimal(15, 2) // Current outstanding balance
+  
+  // Audit fields
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  invoices   Invoice[]
+  payments   Payment[]
+  ledgerEntries AccountingLedger[]
+  
+  @@map("customers")
+  @@index([phone])
+}
+
+// ============================================================================
+// INVOICING & POS
+// ============================================================================
+
+enum InvoiceStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+  CANCELLED
+}
+
+model Invoice {
+  id          String        @id @default(cuid())
+  invoiceId   String        @unique @map("invoice_id") // Human-readable: INV-001
+  customerId  String        @map("customer_id")
+  
+  // Financial details
+  amount      Decimal       @db.Decimal(15, 2) // Total invoice amount
+  amountPaid  Decimal       @default(0) @db.Decimal(15, 2) // Sum of all payments
+  balance     Decimal       @db.Decimal(15, 2) // amount - amountPaid
+  
+  status      InvoiceStatus @default(UNPAID)
+  
+  // Metadata
+  description String?
+  dueDate     DateTime?     @map("due_date")
+  
+  // POS Integration
+  posId       String?       @unique @map("pos_id") // Links to POS sale if created from POS
+  
+  // Audit
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  
+  // Relations
+  customer    Customer      @relation(fields: [customerId], references: [id])
+  payments    PaymentInvoice[]
+  lineItems   InvoiceLineItem[]
+  ledgerEntries AccountingLedger[]
+  
+  @@map("invoices")
+  @@index([customerId])
+  @@index([status])
+  @@index([posId])
+}
+
+model InvoiceLineItem {
+  id          String   @id @default(cuid())
+  invoiceId   String   @map("invoice_id")
+  
+  description String
+  quantity    Decimal  @db.Decimal(10, 2)
+  unitPrice   Decimal  @db.Decimal(15, 2) @map("unit_price")
+  total       Decimal  @db.Decimal(15, 2) // quantity * unitPrice
+  
+  // Inventory tracking (optional)
+  productId   String?  @map("product_id")
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  
+  @@map("invoice_line_items")
+  @@index([invoiceId])
+}
+
+// ============================================================================
+// POS (Point of Sale)
+// ============================================================================
+
+enum POSStatus {
+  PENDING      // Awaiting payment
+  PAID         // Payment confirmed
+  CANCELLED
+}
+
+model POSSale {
+  id          String    @id @default(cuid())
+  posId       String    @unique @map("pos_id") // Human-readable: POS-001
+  customerId  String?   @map("customer_id") // Optional for walk-in customers
+  
+  amount      Decimal   @db.Decimal(15, 2)
+  status      POSStatus @default(PENDING)
+  
+  // Payment tracking
+  invoiceId   String?   @unique @map("invoice_id") // Created when sale is confirmed
+  
+  // Metadata
+  cashierId   String?   @map("cashier_id")
+  branchId    String?   @map("branch_id")
+  
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  items       POSItem[]
+  
+  @@map("pos_sales")
+  @@index([status])
+  @@index([customerId])
+}
+
+model POSItem {
+  id          String   @id @default(cuid())
+  posId       String   @map("pos_id")
+  
+  productId   String   @map("product_id")
+  productName String   @map("product_name")
+  quantity    Decimal  @db.Decimal(10, 2)
+  unitPrice   Decimal  @db.Decimal(15, 2) @map("unit_price")
+  total       Decimal  @db.Decimal(15, 2)
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  sale        POSSale  @relation(fields: [posId], references: [id], onDelete: Cascade)
+  
+  @@map("pos_items")
+  @@index([posId])
+}
+
+// ============================================================================
+// M-PESA PAYMENTS
+// ============================================================================
+
+enum PaymentStatus {
+  PENDING      // Initial state
+  COMPLETED    // Successfully posted
+  FAILED       // Processing failed
+  REVERSED     // Payment reversed
+}
+
+enum PaymentType {
+  INVOICE      // Payment against specific invoice
+  ACCOUNT      // Payment to customer account (general)
+}
+
+model Payment {
+  id                  String        @id @default(cuid())
+  
+  // M-Pesa identifiers (CRITICAL for idempotency)
+  mpesaReceiptNumber  String        @unique @map("mpesa_receipt_number") // e.g., QGK12XYZ9
+  transactionId       String        @unique @map("transaction_id") // Safaricom TransID
+  
+  // Payment details
+  customerId          String        @map("customer_id")
+  amount              Decimal       @db.Decimal(15, 2)
+  phone               String        // Payer's phone (254...)
+  
+  // Account Number sent by customer determines payment type
+  accountReference    String        @map("account_reference") // Could be customerId OR invoiceId
+  paymentType         PaymentType   @map("payment_type")
+  
+  status              PaymentStatus @default(PENDING)
+  
+  // Timestamps
+  transactionDate     DateTime      @map("transaction_date") // When M-Pesa processed it
+  postedAt            DateTime?     @map("posted_at") // When we posted to ledger
+  createdAt           DateTime      @default(now()) @map("created_at")
+  
+  // Error tracking
+  failureReason       String?       @map("failure_reason")
+  
+  // Relations
+  customer            Customer      @relation(fields: [customerId], references: [id])
+  invoices            PaymentInvoice[] // Many-to-many: one payment can clear multiple invoices
+  ledgerEntries       AccountingLedger[]
+  webhookLog          WebhookLog?   // One-to-one with webhook that created it
+  
+  @@map("payments")
+  @@index([customerId])
+  @@index([status])
+  @@index([transactionDate])
+}
+
+// Many-to-many: Payments can be split across multiple invoices
+model PaymentInvoice {
+  id          String   @id @default(cuid())
+  paymentId   String   @map("payment_id")
+  invoiceId   String   @map("invoice_id")
+  
+  // Amount allocated from this payment to this invoice
+  amountApplied Decimal @db.Decimal(15, 2) @map("amount_applied")
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  payment     Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  
+  @@unique([paymentId, invoiceId])
+  @@map("payment_invoices")
+  @@index([paymentId])
+  @@index([invoiceId])
+}
+
+// ============================================================================
+// DOUBLE-ENTRY ACCOUNTING LEDGER
+// ============================================================================
+
+enum AccountType {
+  ASSET           // Cash, Bank, Accounts Receivable
+  LIABILITY       // Loans, Payables
+  EQUITY          // Owner's Equity, Retained Earnings
+  REVENUE         // Sales, Service Income
+  EXPENSE         // Cost of Goods Sold, Operating Expenses
+}
+
+enum EntryType {
+  DEBIT
+  CREDIT
+}
+
+model AccountingLedger {
+  id              String      @id @default(cuid())
+  
+  // Core accounting fields
+  accountCode     String      @map("account_code") // e.g., "1010" (Cash), "1200" (A/R)
+  accountName     String      @map("account_name") // e.g., "M-Pesa Cash", "Accounts Receivable"
+  accountType     AccountType @map("account_type")
+  
+  entryType       EntryType   @map("entry_type") // DEBIT or CREDIT
+  amount          Decimal     @db.Decimal(15, 2)
+  
+  // Transaction grouping (all entries in a payment share same transactionRef)
+  transactionRef  String      @map("transaction_ref") // Links debits/credits together
+  
+  // Source document references
+  paymentId       String?     @map("payment_id")
+  invoiceId       String?     @map("invoice_id")
+  customerId      String?     @map("customer_id")
+  
+  // Metadata
+  description     String
+  transactionDate DateTime    @map("transaction_date")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  
+  // Immutability: Never update or delete ledger entries
+  // Use reversal entries for corrections
+  
+  // Relations
+  payment         Payment?    @relation(fields: [paymentId], references: [id])
+  invoice         Invoice?    @relation(fields: [invoiceId], references: [id])
+  customer        Customer?   @relation(fields: [customerId], references: [id])
+  
+  @@map("accounting_ledger")
+  @@index([accountCode])
+  @@index([transactionRef])
+  @@index([paymentId])
+  @@index([transactionDate])
+}
+
+// ============================================================================
+// WEBHOOK LOGGING & SECURITY
+// ============================================================================
+
+model WebhookLog {
+  id                  String    @id @default(cuid())
+  
+  // Raw webhook data
+  mpesaReceiptNumber  String    @map("mpesa_receipt_number") // For tracking
+  transactionId       String    @map("transaction_id")
+  
+  rawPayload          String    @db.Text @map("raw_payload") // JSON stringified
+  headers             String?   @db.Text // Request headers (JSON)
+  
+  // Processing status
+  processed           Boolean   @default(false)
+  processingError     String?   @db.Text @map("processing_error")
+  
+  // Idempotency check result
+  isDuplicate         Boolean   @default(false) @map("is_duplicate")
+  
+  // Links to created payment (if successfully processed)
+  paymentId           String?   @unique @map("payment_id")
+  payment             Payment?  @relation(fields: [paymentId], references: [id])
+  
+  createdAt           DateTime  @default(now()) @map("created_at")
+  
+  @@map("webhook_logs")
+  @@index([mpesaReceiptNumber])
+  @@index([processed])
+  @@index([createdAt])
+}
+
+// ============================================================================
+// M-PESA CONFIGURATION & LIMITS
+// ============================================================================
+
+model MpesaConfig {
+  id                String   @id @default(cuid())
+  
+  // Daraja API credentials (stored encrypted or in env)
+  shortCode         String   @map("short_code") // PayBill number
+  consumerKey       String   @map("consumer_key")
+  consumerSecret    String   @map("consumer_secret")
+  passkey           String   // For STK Push (future)
+  
+  // API URLs
+  environment       String   // "sandbox" or "production"
+  
+  // Business rules
+  maxTransactionAmount    Decimal @db.Decimal(15, 2) @map("max_transaction_amount") @default(250000)
+  dailyCustomerLimit      Decimal @db.Decimal(15, 2) @map("daily_customer_limit") @default(500000)
+  
+  isActive          Boolean  @default(true) @map("is_active")
+  
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  
+  @@map("mpesa_config")
+}
+
+// ============================================================================
+// NOTES ON SCHEMA DESIGN
+// ============================================================================
+
+// 1. IDEMPOTENCY
+//    - mpesaReceiptNumber is UNIQUE on Payment
+//    - Prevents duplicate payment posting from webhook retries
+//
+// 2. BALANCE INTEGRITY
+//    - Customer.balance = SUM(invoices.balance)
+//    - Invoice.balance = Invoice.amount - Invoice.amountPaid
+//    - Enforced through atomic transactions in payment processor
+//
+// 3. ACCOUNTING CORRECTNESS
+//    - Every payment creates paired DEBIT/CREDIT entries
+//    - Ledger is immutable (no updates/deletes, only reversals)
+//    - transactionRef groups related entries
+//
+// 4. AUDIT TRAIL
+//    - WebhookLog stores every callback received
+//    - AccountingLedger is append-only
+//    - All timestamps preserved
+//
+// 5. SCALABILITY
+//    - Indexed on: customerId, status, dates, mpesaReceiptNumber
+//    - Ready for multi-tenancy (add branchId/companyId where needed)
+//
+// 6. PAYMENT ALLOCATION
+//    - If accountReference matches invoiceId → apply to that invoice
+//    - If accountReference matches customerId → apply to oldest unpaid invoices
+//    - Overpayments create credit balance on customer account
