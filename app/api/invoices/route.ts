@@ -64,7 +64,21 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(invoices);
     }
 
-    return NextResponse.json({ error: 'Invalid query parameters' }, { status: 400 });
+    // List all invoices (default)
+    const prisma = (await import('@/lib/prisma')).default;
+    const invoices = await prisma.invoice.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        customer: {
+          select: {
+            name: true,
+            customerId: true
+          }
+        }
+      },
+      take: 100
+    });
+    return NextResponse.json(invoices);
   } catch (error: any) {
     console.error('❌ Error fetching invoices:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

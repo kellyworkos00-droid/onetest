@@ -23,8 +23,10 @@ const POSItemSchema = z.object({
 });
 
 const CreatePOSSaleSchema = z.object({
-  customerId: z.string().optional(),
-  items: z.array(POSItemSchema).min(1),
+  customerId: z.string(),
+  amount: z.number().positive().optional(),
+  description: z.string().optional(),
+  items: z.array(POSItemSchema).optional(),
   cashierId: z.string().optional(),
   branchId: z.string().optional(),
 });
@@ -59,7 +61,21 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(sales);
     }
 
-    return NextResponse.json({ error: 'Invalid query parameters' }, { status: 400 });
+    // List all POS sales (default)
+    const prisma = (await import('@/lib/prisma')).default;
+    const sales = await prisma.pOSSale.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        customer: {
+          select: {
+            name: true,
+            customerId: true
+          }
+        }
+      },
+      take: 100
+    });
+    return NextResponse.json(sales);
   } catch (error: any) {
     console.error('❌ Error fetching POS sales:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -75,9 +91,30 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const data = CreatePOSSaleSchema.parse(body);
 
+    // Support simple sale creation
+    if (data.amount && !data.items) {
+      const prisma = (await import('@/lib/prisma')).default;
+      const sale = await prisma.pOSSale.create({
+        data: {
+          saleId: `POS-${Date.now()}`,
+          customerId: data.customerId,
+          amount: data.amount,
+          status: 'PENDING',
+          description: data.description,
+          cashierId: data.cashierId,
+          branchId: data.branchId,
+        },
+        include: {
+          customer: true
+        }
+      });
+      return NextResponse.json(sale, { status: 201 });
+    }
+
+    // Original item-based sale
     const sale = await POSService.createSale({
       customerId: data.customerId,
-      items: data.items,
+      items: data.items || [],
       cashierId: data.cashierId,
       branchId: data.branchId,
     });

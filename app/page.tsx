@@ -1,37 +1,100 @@
+'use client';
+
+import { useState } from 'react';
+import Dashboard from './components/Dashboard';
+import CustomerManager from './components/CustomerManager';
+import InvoiceManager from './components/InvoiceManager';
+import POSManager from './components/POSManager';
+import PaymentMonitor from './components/PaymentMonitor';
+
+type Tab = 'dashboard' | 'customers' | 'invoices' | 'pos' | 'payments';
+
 export default function Home() {
+  const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+
+  const tabs = [
+    { id: 'dashboard' as Tab, name: 'Dashboard', icon: '📊' },
+    { id: 'payments' as Tab, name: 'Live Payments', icon: '💳' },
+    { id: 'customers' as Tab, name: 'Customers', icon: '👥' },
+    { id: 'invoices' as Tab, name: 'Invoices', icon: '📄' },
+    { id: 'pos' as Tab, name: 'POS Sales', icon: '🛒' },
+  ];
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24">
-      <div className="max-w-5xl w-full items-center justify-between font-mono text-sm">
-        <h1 className="text-4xl font-bold mb-8">Kelly OS - M-Pesa Payments Engine</h1>
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-          <h2 className="text-2xl font-semibold mb-4">System Status</h2>
-          <div className="space-y-2">
-            <p className="text-green-600 dark:text-green-400">✅ Server Running</p>
-            <p className="text-green-600 dark:text-green-400">✅ Database Connected</p>
-            <p className="text-green-600 dark:text-green-400">✅ M-Pesa Webhook Ready</p>
-          </div>
-          
-          <div className="mt-8">
-            <h3 className="text-xl font-semibold mb-3">API Endpoints</h3>
-            <ul className="space-y-1 text-sm font-mono">
-              <li>POST /api/webhooks/mpesa - M-Pesa C2B Callback</li>
-              <li>POST /api/customers - Create Customer</li>
-              <li>POST /api/invoices - Create Invoice</li>
-              <li>POST /api/pos - Create POS Sale</li>
-              <li>GET /api/reports?type=balance - Account Balances</li>
-            </ul>
-          </div>
-          
-          <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900 rounded">
-            <p className="text-sm">
-              <strong>PayBill Number:</strong> {process.env.MPESA_SHORT_CODE || '174379'}
-            </p>
-            <p className="text-sm mt-2">
-              <strong>Environment:</strong> {process.env.MPESA_ENVIRONMENT || 'sandbox'}
-            </p>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Header */}
+      <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center">
+                <span className="text-white text-xl font-bold">K</span>
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Kelly OS</h1>
+                <p className="text-sm text-gray-600 dark:text-gray-400">M-Pesa PayBill Payments Engine</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="hidden md:flex items-center space-x-2 px-3 py-1 bg-green-100 dark:bg-green-900 rounded-full">
+                <span className="h-2 w-2 bg-green-600 rounded-full animate-pulse"></span>
+                <span className="text-sm font-medium text-green-800 dark:text-green-200">System Online</span>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-gray-500 dark:text-gray-400">PayBill</p>
+                <p className="text-sm font-mono font-semibold text-gray-900 dark:text-white">174379</p>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </main>
-  )
+      </header>
+
+      {/* Navigation Tabs */}
+      <nav className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex space-x-1 overflow-x-auto">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center space-x-2 px-6 py-4 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
+                  activeTab === tab.id
+                    ? 'border-green-600 text-green-600 dark:text-green-400'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                }`}
+              >
+                <span className="text-lg">{tab.icon}</span>
+                <span>{tab.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {activeTab === 'dashboard' && <Dashboard />}
+        {activeTab === 'customers' && <CustomerManager />}
+        {activeTab === 'invoices' && <InvoiceManager />}
+        {activeTab === 'pos' && <POSManager />}
+        {activeTab === 'payments' && <PaymentMonitor />}
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+            <p>© 2026 Kelly OS - M-Pesa PayBill Payments Engine</p>
+            <div className="flex items-center space-x-4">
+              <span>Environment: <strong className="text-gray-900 dark:text-white">Sandbox</strong></span>
+              <span>•</span>
+              <span>Double-Entry Accounting</span>
+              <span>•</span>
+              <span>Real-Time Processing</span>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
 }
