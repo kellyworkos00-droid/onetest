@@ -16,10 +16,27 @@ import { Prisma } from '@prisma/client';
 // VALIDATION SCHEMAS
 // ============================================================================
 
+const normalizePhone = (value: string) => {
+  const cleaned = value.replace(/\s+/g, '').replace(/^\+/, '');
+  if (/^0\d{9}$/.test(cleaned)) {
+    return `254${cleaned.slice(1)}`;
+  }
+  if (/^7\d{8}$/.test(cleaned)) {
+    return `254${cleaned}`;
+  }
+  return cleaned;
+};
+
 const CreateCustomerSchema = z.object({
   customerId: z.string().min(1),
   name: z.string().min(1),
-  phone: z.string().regex(/^254\d{9}$/, 'Phone must be in format 254XXXXXXXXX'),
+  phone: z
+    .string()
+    .min(1)
+    .transform((val) => normalizePhone(val))
+    .refine((val) => /^254\d{9}$/.test(val), {
+      message: 'Phone must be in format 254XXXXXXXXX',
+    }),
   email: z.string().email().optional(),
 });
 

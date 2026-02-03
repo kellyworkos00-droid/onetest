@@ -16,6 +16,7 @@ export default function CustomerManager() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     customerId: '',
     name: '',
@@ -41,22 +42,41 @@ export default function CustomerManager() {
     }
   };
 
+  const normalizePhone = (value: string) => {
+    const cleaned = value.replace(/\s+/g, '').replace(/^\+/, '');
+    if (/^0\d{9}$/.test(cleaned)) {
+      return `254${cleaned.slice(1)}`;
+    }
+    if (/^7\d{8}$/.test(cleaned)) {
+      return `254${cleaned}`;
+    }
+    return cleaned;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
     try {
       const response = await fetch('/api/customers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          phone: normalizePhone(formData.phone),
+        }),
       });
 
       if (response.ok) {
         setShowForm(false);
         setFormData({ customerId: '', name: '', phone: '', email: '' });
         fetchCustomers();
+      } else {
+        const data = await response.json();
+        setErrorMessage(data?.error || 'Failed to create customer');
       }
     } catch (error) {
       console.error('Error creating customer:', error);
+      setErrorMessage('Failed to create customer');
     }
   };
 
@@ -83,6 +103,11 @@ export default function CustomerManager() {
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
           <h3 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">New Customer</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {errorMessage && (
+              <div className="rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm">
+                {errorMessage}
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -120,7 +145,7 @@ export default function CustomerManager() {
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
-                  placeholder="254712345678"
+                  placeholder="254712345678 or 0712345678"
                 />
               </div>
               <div>
