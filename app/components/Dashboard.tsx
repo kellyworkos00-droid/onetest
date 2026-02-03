@@ -24,6 +24,9 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchDashboardStats();
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(fetchDashboardStats, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchDashboardStats = async () => {
@@ -57,6 +60,13 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard Overview</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          Real-time business metrics - Auto-refreshes every 30 seconds
+        </p>
+      </div>
+      
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white">
           <div className="flex items-center justify-between">
