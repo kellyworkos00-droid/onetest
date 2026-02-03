@@ -10,6 +10,18 @@ interface DashboardStats {
   todayPayments: number;
   todayRevenue: number;
 }
+'use client';
+
+import { useEffect, useState } from 'react';
+
+interface DashboardStats {
+  totalCustomers: number;
+  totalInvoices: number;
+  totalRevenue: number;
+  pendingPayments: number;
+  todayPayments: number;
+  todayRevenue: number;
+}
 
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>({
@@ -145,19 +157,7 @@ export default function Dashboard() {
       </div>
     </div>
   );
-}'use client';\r\n\r\nimport { useEffect, useState } from 'react';\r\nimport { TrendingUpIcon, CheckIcon } from './Icons';
-
-interface DashboardStats {
-  totalCustomers: number;
-  totalInvoices: number;
-  totalRevenue: number;
-  pendingPayments: number;
-  todayPayments: number;
-  todayRevenue: number;
 }
-
-export default function Dashboard() {
-  const [stats, setStats] = useState<DashboardStats>({
     totalCustomers: 0,
     totalInvoices: 0,
     totalRevenue: 0,
